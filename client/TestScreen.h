@@ -1,0 +1,65 @@
+#ifndef TESTSCREEN_H
+#define TESTSCREEN_H
+#include <gtkmm.h>
+#include <string>
+#include <vector>
+#include <memory>
+#include <nlohmann/json.hpp>
+#include <random>
+#include <algorithm>
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+using namespace std;
+using json = nlohmann::json;
+
+struct Question {
+    int id;
+    string text;
+    vector<pair<int, string>> answers;
+    int correct_answer_id;
+};
+struct TestSession {
+    int category_id;
+    string category_name;
+    vector<Question> questions;
+    size_t current_question;
+    int score;
+    vector<bool> user_answers;
+    vector<int> selected_answers;
+};
+class TestScreen : public Gtk::Box {
+protected:
+    void showQuestion(size_t question_index);
+    void onAnswerSelected(int answer_index);
+    void onNextQuestion();
+    void onFinishTest();
+    void resetAnswerStyles();
+private:
+    // UI элементы
+    Gtk::Label* questionHeader = nullptr;
+    Gtk::Label* questionLabel = nullptr;
+    Gtk::Grid* answersGrid = nullptr;
+    Gtk::Button* answerButtons[4] = {nullptr, nullptr, nullptr, nullptr};
+    Gtk::Label* answerLabels[4] = {nullptr, nullptr, nullptr, nullptr};
+    Gtk::Label* iconLabels[4] = {nullptr, nullptr, nullptr, nullptr}; // ДОБАВЛЕНО
+    Gtk::Button* nextButton = nullptr;
+    // Данные теста
+    unique_ptr<TestSession> currentSession;
+    string currentUsername;
+    int selectedAnswerIndex = -1;
+    bool answerSubmitted = false;
+    // Вспомогательные методы
+    bool loadQuestionsFromServer(int category_id);
+    void saveTestResult();
+    void showErrorMessage(const std::string& message);
+    void loadCss();
+public:
+    TestScreen();
+    void startTest(const string& category_name, int category_id, const string& username);
+    void startCustomTest(TestSession* session, const string& username);
+    // Сигналы
+    sigc::signal<void()> signal_test_finished;
+    sigc::signal<void()> signal_back_to_categories;
+};
+#endif 
