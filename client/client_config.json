@@ -1,0 +1,12 @@
+{
+    "server": {
+        "host": "localhost",
+        "port": 8080,
+        "reconnect_interval_seconds": 5
+    },
+    "ui": {
+        "window_width": 2400,
+        "window_height": 300,
+        "theme": "light"
+    }
+}
