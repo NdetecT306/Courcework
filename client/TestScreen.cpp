@@ -3,7 +3,8 @@
 // Генератор случайных чисел для перемешивания вопросов
 random_device rd;
 mt19937 g(rd());
-TestScreen::TestScreen() : Gtk::Box(Gtk::Orientation::VERTICAL, 10) { //Создание
+
+TestScreen::TestScreen() : Gtk::Box(Gtk::Orientation::VERTICAL, 10) {
     set_margin(20);
     set_halign(Gtk::Align::CENTER);
     set_valign(Gtk::Align::CENTER);
@@ -65,11 +66,12 @@ TestScreen::TestScreen() : Gtk::Box(Gtk::Orientation::VERTICAL, 10) { //Созд
     append(*nextButton);
     loadCss();
 }
-void TestScreen::startTest(const string& category_name, int category_id, const string& username) {//Подрубаемся к серверу
+
+void TestScreen::startTest(const string& categoryName, int category_id, const string& username) {
     currentUsername = username;
     currentSession = make_unique<TestSession>();
-    currentSession->category_id = category_id;
-    currentSession->category_name = category_name;
+    currentSession->categoryId = category_id;
+    currentSession->categoryName = categoryName;
     if (!loadQuestionsFromServer(category_id)) {
         showErrorMessage("Не удалось загрузить вопросы. Проверьте подключение к серверу.");
         return;
@@ -78,14 +80,14 @@ void TestScreen::startTest(const string& category_name, int category_id, const s
         showErrorMessage("Нет вопросов в этой категории");
         return;
     }
-    currentSession->current_question = 0;
+    currentSession->currentQuestion = 0;
     currentSession->score = 0;
-    currentSession->user_answers.clear();
-    currentSession->selected_answers.clear();
+    currentSession->userAnswers.clear();
+    currentSession->selectedAnswers.clear();
     showQuestion(0);
     resetAnswerStyles();
 }
-bool TestScreen::loadQuestionsFromServer(int category_id) { //Вопросы из категорий
+bool TestScreen::loadQuestionsFromServer(int category_id) {
     if (!g_network_client || !g_network_client->is_connected()) {
         if (!g_network_client->connect()) {
             return false;
@@ -105,7 +107,7 @@ bool TestScreen::loadQuestionsFromServer(int category_id) { //Вопросы и�
                 bool is_correct = answer_data["is_correct"];
                 question.answers.push_back({answer_id, answer_text});
                 if (is_correct) {
-                    question.correct_answer_id = answer_id;
+                    question.correctAnswerId = answer_id;
                 }
             }
             // Перемешиваем ответы
@@ -114,23 +116,21 @@ bool TestScreen::loadQuestionsFromServer(int category_id) { //Вопросы и�
         }
         // Перемешиваем вопросы
         shuffle(currentSession->questions.begin(), currentSession->questions.end(), g);
-        // Берем только 10 вопросов
         if (currentSession->questions.size() > 10) {
             currentSession->questions.resize(10);
         }
-        currentSession->user_answers.resize(currentSession->questions.size(), false);
-        currentSession->selected_answers.resize(currentSession->questions.size(), -1);
+        currentSession->userAnswers.resize(currentSession->questions.size(), false);
+        currentSession->selectedAnswers.resize(currentSession->questions.size(), -1);
         return true;
     }
     return false;
 }
-void TestScreen::showQuestion(size_t question_index) { //Показать вопрос
-    if (!currentSession || question_index >= currentSession->questions.size()) {
+void TestScreen::showQuestion(size_t questionIndex) {
+    if (!currentSession || questionIndex >= currentSession->questions.size()) {
         return;
     }
-    const Question& question = currentSession->questions[question_index];
-    // Обновляем заголовок
-    questionHeader->set_text("Вопрос " + to_string(question_index + 1) + " из " + to_string(currentSession->questions.size()));
+    const Question& question = currentSession->questions[questionIndex];
+    questionHeader->set_text("Вопрос " + to_string(questionIndex + 1) + " из " + to_string(currentSession->questions.size()));
     // Обновляем текст вопроса
     questionLabel->set_text(question.text);
     // Сбрасываем все стили и иконки
@@ -149,10 +149,9 @@ void TestScreen::showQuestion(size_t question_index) { //Показать воп
         answerButtons[i]->set_visible(true);
         iconLabels[i]->set_text("");
     }
-    // Если пользователь уже отвечал на этот вопрос
-    if (currentSession->selected_answers[question_index] != -1) {
-        int prev_selected_id = currentSession->selected_answers[question_index];
-        bool prev_correct = currentSession->user_answers[question_index];
+    if (currentSession->selectedAnswers[questionIndex] != -1) {
+        int prev_selected_id = currentSession->selectedAnswers[questionIndex];
+        bool prev_correct = currentSession->userAnswers[questionIndex];
         int prev_index = -1;
         for (int i = 0; i < question.answers.size(); i++) {
             if (question.answers[i].first == prev_selected_id) {
@@ -167,7 +166,7 @@ void TestScreen::showQuestion(size_t question_index) { //Показать воп
             } else {
                 answerButtons[prev_index]->add_css_class("answer-wrong");
                 for (int i = 0; i < question.answers.size(); i++) {
-                    if (question.answers[i].first == question.correct_answer_id) {
+                    if (question.answers[i].first == question.correctAnswerId) {
                         answerButtons[i]->remove_css_class("answer-button");
                         answerButtons[i]->add_css_class("answer-correct");
                         break;
@@ -186,15 +185,15 @@ void TestScreen::showQuestion(size_t question_index) { //Показать воп
         answerSubmitted = false;
         nextButton->set_sensitive(false);
     }
-    if (question_index == currentSession->questions.size() - 1) {
+    if (questionIndex == currentSession->questions.size() - 1) {
         nextButton->set_label("Завершить тест");
     } else {
         nextButton->set_label("Следующий вопрос");
     }
 }
-void TestScreen::onAnswerSelected(int answer_index) { //Выбранный ответ
+void TestScreen::onAnswerSelected(int answerIndex) {
     if (answerSubmitted || !currentSession || 
-        currentSession->current_question >= currentSession->questions.size()) {
+        currentSession->currentQuestion >= currentSession->questions.size()) {
         return;
     }
     for (int i = 0; i < 4; i++) {
@@ -205,23 +204,23 @@ void TestScreen::onAnswerSelected(int answer_index) { //Выбранный от�
             iconLabels[i]->set_text("");
         }
     }
-    selectedAnswerIndex = answer_index;
+    selectedAnswerIndex = answerIndex;
     answerSubmitted = true;
-    const Question& question = currentSession->questions[currentSession->current_question];
-    int selected_answer_id = question.answers[answer_index].first;
-    currentSession->selected_answers[currentSession->current_question] = selected_answer_id;
-    bool is_correct = (selected_answer_id == question.correct_answer_id);
-    currentSession->user_answers[currentSession->current_question] = is_correct;
-    answerButtons[answer_index]->remove_css_class("answer-button");
+    const Question& question = currentSession->questions[currentSession->currentQuestion];
+    int selected_answer_id = question.answers[answerIndex].first;
+    currentSession->selectedAnswers[currentSession->currentQuestion] = selected_answer_id;
+    bool is_correct = (selected_answer_id == question.correctAnswerId);
+    currentSession->userAnswers[currentSession->currentQuestion] = is_correct;
+    answerButtons[answerIndex]->remove_css_class("answer-button");
     if (is_correct) {
         // Правильный ответ
-        answerButtons[answer_index]->add_css_class("answer-correct");
+        answerButtons[answerIndex]->add_css_class("answer-correct");
         currentSession->score++;
     } else {
         // Неправильный ответ
-        answerButtons[answer_index]->add_css_class("answer-wrong");
+        answerButtons[answerIndex]->add_css_class("answer-wrong");
         for (int i = 0; i < question.answers.size(); i++) {
-            if (question.answers[i].first == question.correct_answer_id) {
+            if (question.answers[i].first == question.correctAnswerId) {
                 answerButtons[i]->remove_css_class("answer-button");
                 answerButtons[i]->add_css_class("answer-correct");
                 break;
@@ -234,23 +233,24 @@ void TestScreen::onAnswerSelected(int answer_index) { //Выбранный от�
     }
     nextButton->set_sensitive(true);
 }
-void TestScreen::onNextQuestion() { //Следующий вопрос
+void TestScreen::onNextQuestion() {
     if (!currentSession) return; 
-    currentSession->current_question++;
-    if (currentSession->current_question < currentSession->questions.size()) {
-        showQuestion(currentSession->current_question);
+    currentSession->currentQuestion++;
+    if (currentSession->currentQuestion < currentSession->questions.size()) {
+        showQuestion(currentSession->currentQuestion);
     } else {
         onFinishTest();
     }
 }
-void TestScreen::onFinishTest() { //Закончить тест
+void TestScreen::onFinishTest() {
     if (!currentSession) return;
     // Сохраняем результат на сервере
     saveTestResult();
-    // Показываем результаты
+    // Показываем резултаты
     int total_questions = currentSession->questions.size();
     int correct_answers = currentSession->score;
     int percentage = (total_questions > 0) ? (correct_answers * 100) / total_questions : 0;
+    
     auto dialog = new Gtk::MessageDialog("Результаты теста", false, Gtk::MessageType::INFO, Gtk::ButtonsType::OK, true);
     auto root = get_root();
     if (root) {
@@ -261,43 +261,43 @@ void TestScreen::onFinishTest() { //Закончить тест
     }
     dialog->set_modal(true);
     dialog->set_secondary_text(
-        "Категория: " + currentSession->category_name + "\n\n" +
-        "Правильных ответов: " + to_string(correct_answers) + " из " + 
-        to_string(total_questions) + "\n" +
-        "Результат: " + to_string(percentage) + "%");
-    dialog->signal_response().connect([this, dialog](int response_id) {dialog->close();delete dialog;
-        Glib::signal_timeout().connect_once([this]() {signal_test_finished.emit();}, 100);
+        "Категория: " + currentSession->categoryName + "\n\n" + "Правильных ответов: " + to_string(correct_answers) + " из " + 
+        to_string(total_questions) + "\n" + "Результат: " + to_string(percentage) + "%");
+    dialog->signal_response().connect([this, dialog](int response_id) {
+        dialog->close();
+        delete dialog;
+        Glib::signal_timeout().connect_once([this]() { signal_test_finished.emit(); }, 100);
     });
     dialog->show();
 }
-void TestScreen::saveTestResult() { //Сохранить результат теста
+
+void TestScreen::saveTestResult() {
     if (!currentSession || !g_network_client) return;
     if (!g_network_client->is_connected()) {
         if (!g_network_client->connect()) {
             return;
         }
     }
-    if (currentSession->category_id == -1) {
+    if (currentSession->categoryId == -1) {
         return; // Пропускаем сохранение для пользовательских тестов
     }
-    // Подготавливаем ответы для отправки
     json user_answers = json::array();
     for (size_t i = 0; i < currentSession->questions.size(); i++) {
-        if (currentSession->selected_answers[i] != -1) {
+        if (currentSession->selectedAnswers[i] != -1) {
             json answer = {
                 {"question_id", currentSession->questions[i].id},
-                {"answer_id", currentSession->selected_answers[i]}
+                {"answer_id", currentSession->selectedAnswers[i]}
             };
             user_answers.push_back(answer);
         }
     }
     g_network_client->check_answers(
         currentUsername,
-        currentSession->category_id,
+        currentSession->categoryId,
         user_answers
     );
 }
-void TestScreen::resetAnswerStyles() { //Обновить экран
+void TestScreen::resetAnswerStyles() {
     for (int i = 0; i < 4; i++) {
         if (answerButtons[i]) {
             answerButtons[i]->remove_css_class("answer-correct");
@@ -310,7 +310,7 @@ void TestScreen::resetAnswerStyles() { //Обновить экран
         }
     }
 }
-void TestScreen::showErrorMessage(const string& message) { //Сообщение об ошибке
+void TestScreen::showErrorMessage(const string& message) {
     auto dialog = new Gtk::MessageDialog("Ошибка", false, Gtk::MessageType::ERROR, Gtk::ButtonsType::OK, true);
     auto root = get_root();
     if (root) {
@@ -321,10 +321,14 @@ void TestScreen::showErrorMessage(const string& message) { //Сообщение 
     }
     dialog->set_modal(true);
     dialog->set_secondary_text(message);
-    dialog->signal_response().connect([this, dialog](int response_id) {dialog->close();delete dialog;signal_back_to_categories.emit();});
+    dialog->signal_response().connect([this, dialog](int response_id) {
+        dialog->close();
+        delete dialog;
+        signal_back_to_categories.emit();
+    });
     dialog->show();
 }
-void TestScreen::loadCss() { //Стиль
+void TestScreen::loadCss() {
     auto css_provider = Gtk::CssProvider::create();
     const char* css_style = R"(
         .test-header {
@@ -422,20 +426,20 @@ void TestScreen::loadCss() { //Стиль
         GTK_STYLE_PROVIDER_PRIORITY_APPLICATION
     );
 }
-void TestScreen::startCustomTest(TestSession* session, const string& username) { //Пользовательский тест
+void TestScreen::startCustomTest(TestSession* session, const string& username) {
     currentUsername = username;
-    currentSession.reset(session); // Принимаем готовую сессию
+    currentSession.reset(session); 
     if (!currentSession || currentSession->questions.empty()) {
         showErrorMessage("Нет вопросов в тесте");
         return;
     }
-    currentSession->current_question = 0;
+    currentSession->currentQuestion = 0;
     currentSession->score = 0;
-    if (currentSession->user_answers.size() != currentSession->questions.size()) {
-        currentSession->user_answers.resize(currentSession->questions.size(), false);
+    if (currentSession->userAnswers.size() != currentSession->questions.size()) {
+        currentSession->userAnswers.resize(currentSession->questions.size(), false);
     }
-    if (currentSession->selected_answers.size() != currentSession->questions.size()) {
-        currentSession->selected_answers.resize(currentSession->questions.size(), -1);
+    if (currentSession->selectedAnswers.size() != currentSession->questions.size()) {
+        currentSession->selectedAnswers.resize(currentSession->questions.size(), -1);
     }
     showQuestion(0);
     resetAnswerStyles();
