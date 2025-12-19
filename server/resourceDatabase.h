@@ -10,12 +10,12 @@ using namespace std;
 class ResourceDatabaseManager {
 private:
     pqxx::connection connection;
-    mutex db_mutex;
+    mutex dbmutex;
     
 public:
     ResourceDatabaseManager();
     json getResourceCategories();
-    json getResourcesByCategory(int category_id);
+    json getResourcesByCategory(int categoryid);
     json getAllResources();
     json getResourcesWithCategories();
 };
