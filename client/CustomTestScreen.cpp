@@ -1,15 +1,14 @@
 #include "CustomTestScreen.h"
-#include <iostream>
-#include <sstream>
+
 CustomTestScreen::CustomTestScreen() : Gtk::Box(Gtk::Orientation::VERTICAL, 10) { //Создание
     set_margin(20);
     set_halign(Gtk::Align::CENTER);
     set_valign(Gtk::Align::CENTER);
     // Заголовок
-    title_label = Gtk::make_managed<Gtk::Label>("Создание пользовательского теста");
-    title_label->add_css_class("custom-test-title");
-    title_label->set_halign(Gtk::Align::CENTER);
-    append(*title_label);
+    titleLabel = Gtk::make_managed<Gtk::Label>("Создание пользовательского теста");
+    titleLabel->add_css_class("custom-test-title");
+    titleLabel->set_halign(Gtk::Align::CENTER);
+    append(*titleLabel);
     // Основной контейнер
     auto maincontainer = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL, 20);
     maincontainer->set_halign(Gtk::Align::CENTER);
@@ -25,9 +24,9 @@ CustomTestScreen::CustomTestScreen() : Gtk::Box(Gtk::Orientation::VERTICAL, 10) 
     categoriesheader->set_halign(Gtk::Align::START);
     categories_container->append(*categoriesheader);
     // Контейнер для категорий
-    categories_box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL, 5);
-    categories_box->add_css_class("categories-box");
-    categories_container->append(*categories_box);
+    categoriesBox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL, 5);
+    categoriesBox->add_css_class("categories-box");
+    categories_container->append(*categoriesBox);
     // Настройки для теста
     auto settingscontainer = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL, 15);
     settingscontainer->set_halign(Gtk::Align::START);
@@ -46,49 +45,49 @@ CustomTestScreen::CustomTestScreen() : Gtk::Box(Gtk::Orientation::VERTICAL, 10) 
     questionslabel->add_css_class("questions-label");
     questionslabel->set_size_request(80, -1);
     questionsrow->append(*questionslabel);
-    questions_spin = Gtk::make_managed<Gtk::SpinButton>();
-    questions_spin->set_range(1, 100);
-    questions_spin->set_value(10);
-    questions_spin->set_increments(1, 5);
-    questions_spin->add_css_class("questions-spin");
-    questions_spin->set_size_request(60, -1);
-    questions_spin->set_sensitive(false);
-    questionsrow->append(*questions_spin);
+    questionsSpin = Gtk::make_managed<Gtk::SpinButton>();
+    questionsSpin->set_range(1, 100);
+    questionsSpin->set_value(10);
+    questionsSpin->set_increments(1, 5);
+    questionsSpin->add_css_class("questions-spin");
+    questionsSpin->set_size_request(60, -1);
+    questionsSpin->set_sensitive(false);
+    questionsrow->append(*questionsSpin);
     // Статусное сообщение
-    status_label = Gtk::make_managed<Gtk::Label>("Выберите категории слева");
-    status_label->add_css_class("status-label");
-    status_label->set_halign(Gtk::Align::START);
-    settingscontainer->append(*status_label);
+    statusLabel = Gtk::make_managed<Gtk::Label>("Выберите категории слева");
+    statusLabel->add_css_class("status-label");
+    statusLabel->set_halign(Gtk::Align::START);
+    settingscontainer->append(*statusLabel);
     // Кнопки
     auto buttonsbox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL, 10);
     buttonsbox->set_halign(Gtk::Align::CENTER);
     buttonsbox->set_margin_top(20);
     settingscontainer->append(*buttonsbox);
     // Кнопка создания теста
-    create_test_button = Gtk::make_managed<Gtk::Button>("Создать тест");
-    create_test_button->add_css_class("create-test-button");
-    create_test_button->set_size_request(120, 35);
-    create_test_button->set_sensitive(false);
-    create_test_button->signal_clicked().connect(sigc::mem_fun(*this, &CustomTestScreen::create_test));
-    buttonsbox->append(*create_test_button);
+    createTestButton = Gtk::make_managed<Gtk::Button>("Создать тест");
+    createTestButton->add_css_class("create-test-button");
+    createTestButton->set_size_request(120, 35);
+    createTestButton->set_sensitive(false);
+    createTestButton->signal_clicked().connect(sigc::mem_fun(*this, &CustomTestScreen::create_test));
+    buttonsbox->append(*createTestButton);
     // Кнопка назад
-    back_button = Gtk::make_managed<Gtk::Button>("Назад");
-    back_button->add_css_class("back-button");
-    back_button->set_size_request(120, 35);
-    back_button->signal_clicked().connect([this]() {signal_back_to_main.emit();});
-    buttonsbox->append(*back_button);
+    backButton = Gtk::make_managed<Gtk::Button>("Назад");
+    backButton->add_css_class("back-button");
+    backButton->set_size_request(120, 35);
+    backButton->signal_clicked().connect([this]() {signal_back_to_main.emit();});
+    buttonsbox->append(*backButton);
     load_css();
 }
 void CustomTestScreen::load_categories(const string& username) { //Загрузка нашего чуда
-    current_username = username;
+    currentUsername = username;
     // Очищаем предыдущие категории
     categories.clear();
-    while (Gtk::Widget* child = categories_box->get_first_child()) {
-        categories_box->remove(*child);
+    while (Gtk::Widget* child = categoriesBox->get_first_child()) {
+        categoriesBox->remove(*child);
     }
     if (!g_network_client || !g_network_client->is_connected()) {
-        status_label->set_text("Нет подключения к серверу");
-        status_label->add_css_class("error-label");
+        statusLabel->set_text("Нет подключения к серверу");
+        statusLabel->add_css_class("error-label");
         return;
     }
     json response = g_network_client->get_categories();
@@ -97,11 +96,11 @@ void CustomTestScreen::load_categories(const string& username) { //Загруз�
             CategoryInfo cat;
             cat.id = cat_data["id"];
             cat.name = cat_data["name"];
-            cat.question_count = 0;
+            cat.questionCount = 0;
             json questions_response = g_network_client->get_questions(cat.id);
             if (questions_response["status"] == "success" && 
                 questions_response.contains("questions")) {
-                cat.question_count = questions_response["questions"].size();
+                cat.questionCount = questions_response["questions"].size();
             }
             categories.push_back(cat);
         }
@@ -109,83 +108,82 @@ void CustomTestScreen::load_categories(const string& username) { //Загруз�
             auto checkbox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL, 8);
             checkbox->set_halign(Gtk::Align::START);
             checkbox->add_css_class("category-checkbox");
-            cat.check_button = Gtk::make_managed<Gtk::CheckButton>();
-            cat.check_button->add_css_class("category-check");
-            cat.check_button->signal_toggled().connect(sigc::mem_fun(*this, &CustomTestScreen::on_category_toggled));
-            checkbox->append(*cat.check_button);
+            cat.checkButton = Gtk::make_managed<Gtk::CheckButton>();
+            cat.checkButton->add_css_class("category-check");
+            cat.checkButton->signal_toggled().connect(sigc::mem_fun(*this, &CustomTestScreen::on_category_toggled));
+            checkbox->append(*cat.checkButton);
             // Название категории
-            string labeltext = cat.name + " (" + to_string(cat.question_count) + ")";
+            string labeltext = cat.name + " (" + to_string(cat.questionCount) + ")";
             auto label = Gtk::make_managed<Gtk::Label>(labeltext);
             label->add_css_class("category-label");
             label->set_halign(Gtk::Align::START);
             checkbox->append(*label);
-            categories_box->append(*checkbox);
+            categoriesBox->append(*checkbox);
         }
         if (categories.empty()) {
-            status_label->set_text("Нет доступных категорий");
-            status_label->add_css_class("warning-label");
+            statusLabel->set_text("Нет доступных категорий");
+            statusLabel->add_css_class("warning-label");
         } else {
-            status_label->set_text("Выберите категории слева");
-            status_label->remove_css_class("error-label");
-            status_label->remove_css_class("warning-label");
+            statusLabel->set_text("Выберите категории слева");
+            statusLabel->remove_css_class("error-label");
+            statusLabel->remove_css_class("warning-label");
         }
     } else {
-        status_label->set_text("Не удалось загрузить категории");
-        status_label->add_css_class("error-label");
+        statusLabel->set_text("Не удалось загрузить категории");
+        statusLabel->add_css_class("error-label");
     }
 }
 void CustomTestScreen::create_test() { //Создание своего теста
-    set<int> selected_categories;
-    int total_questions = 0;
-    int max_questions = 0;
+    set<int> selectedcategories;
+    int maxquestions = 0;
     // Выбранные категории
     for (const auto& cat : categories) {
-        if (cat.check_button && cat.check_button->get_active()) {
-            selected_categories.insert(cat.id);
-            max_questions += min(cat.question_count, 10); 
+        if (cat.checkButton && cat.checkButton->get_active()) {
+            selectedcategories.insert(cat.id);
+            maxquestions += min(cat.questionCount, 10); 
         }
     }
-    if (selected_categories.empty()) {
-        status_label->set_text("Выберите хотя бы одну категорию");
-        status_label->add_css_class("error-label");
+    if (selectedcategories.empty()) {
+        statusLabel->set_text("Выберите хотя бы одну категорию");
+        statusLabel->add_css_class("error-label");
         return;
     }
-    int requested_questions = questions_spin->get_value_as_int();
-    if (requested_questions > max_questions) {
-        string error_msg = "Максимум: " + to_string(max_questions);
-        status_label->set_text(error_msg);
-        status_label->add_css_class("error-label");
+    int requestedquestions = questionsSpin->get_value_as_int();
+    if (requestedquestions > maxquestions) {
+        string error_msg = "Максимум: " + to_string(maxquestions);
+        statusLabel->set_text(error_msg);
+        statusLabel->add_css_class("error-label");
         return;
     }
-    if (requested_questions < 1) {
-        status_label->set_text("Минимум 1 вопрос");
-        status_label->add_css_class("error-label");
+    if (requestedquestions < 1) {
+        statusLabel->set_text("Минимум 1 вопрос");
+        statusLabel->add_css_class("error-label");
         return;
     }
-    signal_start_custom_test.emit(requested_questions, "Пользовательский тест", selected_categories, -1);
+    signal_start_custom_test.emit(requestedquestions, "Пользовательский тест", selectedcategories, -1);
 }
 void CustomTestScreen::on_category_toggled() {//Условие для создания
-    int selected_count = 0;
-    int max_questions = 0;
+    int selectedCount = 0;
+    int maxQuestions = 0;
     for (const auto& cat : categories) {
-        if (cat.check_button && cat.check_button->get_active()) {
-            selected_count++;
-            max_questions += std::min(cat.question_count, 10); 
+        if (cat.checkButton && cat.checkButton->get_active()) {
+            selectedCount++;
+            maxQuestions += std::min(cat.questionCount, 10); 
         }
     }
-    if (selected_count > 0) {
-        questions_spin->set_sensitive(true);
-        questions_spin->set_range(1, max_questions);
-        questions_spin->set_value(std::min(10, max_questions));
-        create_test_button->set_sensitive(true);
-        string status_text = "Выбрано: " + to_string(selected_count) + "\nМаксимум: " + to_string(max_questions);
-        status_label->set_text(status_text);
-        status_label->remove_css_class("error-label");
+    if (selectedCount > 0) {
+        questionsSpin->set_sensitive(true);
+        questionsSpin->set_range(1, maxQuestions);
+        questionsSpin->set_value(std::min(10, maxQuestions));
+        createTestButton->set_sensitive(true);
+        string status_text = "Выбрано: " + to_string(selectedCount) + "\nМаксимум: " + to_string(maxQuestions);
+        statusLabel->set_text(status_text);
+        statusLabel->remove_css_class("error-label");
     } else {
-        questions_spin->set_sensitive(false);
-        create_test_button->set_sensitive(false);
-        status_label->set_text("Выберите категории слева");
-        status_label->add_css_class("error-label");
+        questionsSpin->set_sensitive(false);
+        createTestButton->set_sensitive(false);
+        statusLabel->set_text("Выберите категории слева");
+        statusLabel->add_css_class("error-label");
     }
 }
 void CustomTestScreen::load_css() { //Стили
