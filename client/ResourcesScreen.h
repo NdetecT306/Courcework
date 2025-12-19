@@ -31,6 +31,7 @@ public:
     void append(Gtk::Widget& widget) {
         content_box->append(widget);
     }
+    // Сигналы
     sigc::signal<void()> signal_back_to_main;
 };
 
