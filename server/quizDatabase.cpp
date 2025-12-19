@@ -2,14 +2,14 @@
 #include <iostream>
 
 QuizDatabaseManager::QuizDatabaseManager() : connection(
-    "host=localhost "
+    "host=172.17.0.1 "
     "port=5432 "
     "dbname=quiz "
     "user=admin306 "
     "password=ILoveMyCreation"
 ) {}
 json QuizDatabaseManager::getCategories() {
-    lock_guard<std::mutex> lock(db_mutex);
+    lock_guard<std::mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
         auto result = txn.exec("SELECT id, name FROM categories ORDER BY id");
@@ -27,13 +27,13 @@ json QuizDatabaseManager::getCategories() {
         return {{"error", e.what()}};
     }
 }
-json QuizDatabaseManager::getQuestionsByCategory(int category_id) {
-    lock_guard<mutex> lock(db_mutex);
+json QuizDatabaseManager::getQuestionsByCategory(int categoryid) {
+    lock_guard<mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
         auto result = txn.exec_params(
             "SELECT id, question_text FROM questions WHERE category_id = $1 ORDER BY id",
-            category_id
+            categoryid
         );
         txn.commit();
         json questions = json::array();
@@ -41,16 +41,16 @@ json QuizDatabaseManager::getQuestionsByCategory(int category_id) {
             json question;
             question["id"] = row["id"].as<int>();
             question["text"] = row["question_text"].as<string>();
-            auto answers_result = txn.exec_params(
+            auto answersresult = txn.exec_params(
                 "SELECT id, answer_text, is_correct FROM answers WHERE question_id = $1",
                 question["id"].get<int>()
             );
             json answers = json::array();
-            for (const auto& answer_row : answers_result) {
+            for (const auto& answerrow : answersresult) {
                 json answer;
-                answer["id"] = answer_row["id"].as<int>();
-                answer["text"] = answer_row["answer_text"].as<string>();
-                answer["is_correct"] = answer_row["is_correct"].as<bool>();
+                answer["id"] = answerrow["id"].as<int>();
+                answer["text"] = answerrow["answer_text"].as<string>();
+                answer["is_correct"] = answerrow["is_correct"].as<bool>();
                 answers.push_back(answer);
             }
             question["answers"] = answers;
@@ -62,46 +62,46 @@ json QuizDatabaseManager::getQuestionsByCategory(int category_id) {
         return {{"error", e.what()}};
     }
 }
-json QuizDatabaseManager::checkAnswers(const json& user_answers) {
-    lock_guard<mutex> lock(db_mutex);
+json QuizDatabaseManager::checkAnswers(const json& useranswers) {
+    lock_guard<mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
-        int total_questions = 0;
-        int correct_answers = 0;
+        int totalquestions = 0;
+        int correctanswers = 0;
         json results = json::array();
-        for (const auto& answer : user_answers) {
-            int question_id = answer["question_id"];
-            int answer_id = answer["answer_id"];
+        for (const auto& answer : useranswers) {
+            int questionid = answer["question_id"];
+            int answerid = answer["answer_id"];
             auto result = txn.exec_params(
                 "SELECT is_correct FROM answers WHERE id = $1 AND question_id = $2",
-                answer_id, question_id
+                answerid, questionid
             );
             if (!result.empty()) {
-                bool is_correct = result[0]["is_correct"].as<bool>();
-                total_questions++;
-                json question_result;
-                question_result["question_id"] = question_id;
-                question_result["answer_id"] = answer_id;
-                question_result["is_correct"] = is_correct;
-                if (is_correct) {
-                    correct_answers++;
+                bool iscorrect = result[0]["is_correct"].as<bool>();
+                totalquestions++;
+                json questionresult;
+                questionresult["question_id"] = questionid;
+                questionresult["answer_id"] = answerid;
+                questionresult["is_correct"] = iscorrect;
+                if (iscorrect) {
+                    correctanswers++;
                 }
-                auto correct_result = txn.exec_params(
+                auto correctresult = txn.exec_params(
                     "SELECT id, answer_text FROM answers WHERE question_id = $1 AND is_correct = true",
-                    question_id
+                    questionid
                 );
-                if (!correct_result.empty()) {
-                    question_result["correct_answer_id"] = correct_result[0]["id"].as<int>();
-                    question_result["correct_answer_text"] = correct_result[0]["answer_text"].as<std::string>();
+                if (!correctresult.empty()) {
+                    questionresult["correct_answer_id"] = correctresult[0]["id"].as<int>();
+                    questionresult["correct_answer_text"] = correctresult[0]["answer_text"].as<std::string>();
                 }
-                results.push_back(question_result);
+                results.push_back(questionresult);
             }
         }
         txn.commit();
         return {
-            {"total_questions", total_questions},
-            {"correct_answers", correct_answers},
-            {"score", (total_questions > 0) ? (correct_answers * 100 / total_questions) : 0},
+            {"total_questions", totalquestions},
+            {"correct_answers", correctanswers},
+            {"score", (totalquestions > 0) ? (correctanswers * 100 / totalquestions) : 0},
             {"results", results}
         };
     } catch (const exception& e) {
@@ -109,8 +109,8 @@ json QuizDatabaseManager::checkAnswers(const json& user_answers) {
         return {{"error", e.what()}};
     }
 }
-json QuizDatabaseManager::getTestStatistics(const string& user_login) {
-    lock_guard<mutex> lock(db_mutex);
+json QuizDatabaseManager::getTestStatistics(const string& userlogin) {
+    lock_guard<mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
         txn.exec(
@@ -129,7 +129,7 @@ json QuizDatabaseManager::getTestStatistics(const string& user_login) {
         auto result = txn2.exec_params(
             "SELECT category_id, score, total_questions, correct_answers, test_date "
             "FROM test_results WHERE user_login = $1 ORDER BY test_date DESC",
-            user_login
+            userlogin
         );
         txn2.commit();
         json statistics = json::array();
@@ -148,14 +148,14 @@ json QuizDatabaseManager::getTestStatistics(const string& user_login) {
         return {{"error", e.what()}};
     }
 }
-bool QuizDatabaseManager::saveTestResult(const string& user_login, int category_id, int score, int total_questions, int correct_answers) {
-    lock_guard<mutex> lock(db_mutex);
+bool QuizDatabaseManager::saveTestResult(const string& userlogin, int categoryid, int score, int totalquestions, int correctanswers) {
+    lock_guard<mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
         txn.exec_params(
             "INSERT INTO test_results (user_login, category_id, score, total_questions, correct_answers) "
             "VALUES ($1, $2, $3, $4, $5)",
-            user_login, category_id, score, total_questions, correct_answers
+            userlogin, categoryid, score, totalquestions, correctanswers
         );
         txn.commit();
         return true;
