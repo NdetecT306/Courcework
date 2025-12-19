@@ -11,17 +11,15 @@ using namespace std;
 class UserDatabaseManager {
 private:
     pqxx::connection connection;
-    mutex db_mutex;
+    mutex dbmutex;
+    bool verifyPassword(const string& inputpassword, const string& storedhashwithsalt);
+    string SHAWithSalt(const string& password);
 public:
     UserDatabaseManager();
-    bool authenticateUser(const string& login, const string& password, BruteForceProtection& bf_protection);
+    bool authenticateUser(const string& login, const string& password, BruteForceProtection& bfprotection);
     bool registerUser(const string& login, const string& password);
     bool userExists(const string& login);
     json getUserProfile(const string& login);
     bool saveUserProfile(const json& profile);
-private:
-    bool verifyPassword(const string& input_password, const string& stored_hash_with_salt);
-    string SHAWithSalt(const string& password);
 };
-
 #endif
