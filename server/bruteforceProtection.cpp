@@ -2,45 +2,45 @@
 #include <iostream>
 
 bool BruteForceProtection::canAttemptLogin(const std::string& login) {
-    lock_guard<mutex> lock(lock_mutex);
+    lock_guard<mutex> lock(lockmutex);
     auto now = system_clock::now();
-    auto it = login_attempts.find(login);
-    if (it != login_attempts.end()) {
+    auto it = loginattempts.find(login);
+    if (it != loginattempts.end()) {
         // Если пользователь заблокирован
-        if (now < it->second.block_until) {
+        if (now < it->second.blockuntil) {
             return false; 
         }
         // Если прошло больше 5 минут с последней попытки, сбрасываем счетчик
-        auto time_since_last = duration_cast<minutes>(now - it->second.last_attempt);
-        if (time_since_last > minutes(5)) {
-            login_attempts.erase(it);
+        auto timesincelast = duration_cast<minutes>(now - it->second.lastattempt);
+        if (timesincelast > minutes(5)) {
+            loginattempts.erase(it);
             return true;
         }
     }
     return true;
 }
 void BruteForceProtection::recordFailedAttempt(const string& login) {
-    lock_guard<mutex> lock(lock_mutex);
+    lock_guard<mutex> lock(lockmutex);
     auto now = system_clock::now();
-    auto& attempt = login_attempts[login];
+    auto& attempt = loginattempts[login];
     attempt.attempts++;
-    attempt.last_attempt = now;
+    attempt.lastattempt = now;
     if (attempt.attempts >= 4) {
-        int delay_seconds = (attempt.attempts - 3) * 5;
-        attempt.block_until = now + seconds(delay_seconds);
+        int delayseconds = (attempt.attempts - 3) * 5;
+        attempt.blockuntil = now + seconds(delayseconds);
     }
 }
 void BruteForceProtection::recordSuccessfulAttempt(const string& login) {
-    lock_guard<mutex> lock(lock_mutex);
-    login_attempts.erase(login);
+    lock_guard<mutex> lock(lockmutex);
+    loginattempts.erase(login);
 }
 int BruteForceProtection::getRemainingBlockTime(const string& login) {
-    lock_guard<mutex> lock(lock_mutex);
-    auto it = login_attempts.find(login);
-    if (it != login_attempts.end()) {
+    lock_guard<mutex> lock(lockmutex);
+    auto it = loginattempts.find(login);
+    if (it != loginattempts.end()) {
         auto now = system_clock::now();
-        if (now < it->second.block_until) {
-            auto remaining = duration_cast<seconds>(it->second.block_until - now);
+        if (now < it->second.blockuntil) {
+            auto remaining = duration_cast<seconds>(it->second.blockuntil - now);
             return remaining.count();
         }
     }
