@@ -2,20 +2,20 @@
 #include "SHA.h"
 #include <iostream>
 UserDatabaseManager::UserDatabaseManager() : connection(
-    "host=localhost "
+    "host=172.17.0.1 "
     "port=5432 "
     "dbname=userbd "
     "user=admin306 "
     "password=ILoveMyCreation"
 ) {}
-bool UserDatabaseManager::authenticateUser(const string& login, const string& password, BruteForceProtection& bf_protection) {
+bool UserDatabaseManager::authenticateUser(const string& login, const string& password, BruteForceProtection& bfprotection) {
     // Проверяем блокировку перед аутентификацией
-    if (!bf_protection.canAttemptLogin(login)) {
-        int remaining_time = bf_protection.getRemainingBlockTime(login);
-        cerr << "Пользователь " << login << " заблокирован. Осталось: " << remaining_time << " сек" << endl;
+    if (!bfprotection.canAttemptLogin(login)) {
+        int remainingtime = bfprotection.getRemainingBlockTime(login);
+        cerr << "Пользователь " << login << " заблокирован. Осталось: " << remainingtime << " сек" << endl;
         return false;
     }
-    lock_guard<mutex> lock(db_mutex);
+    lock_guard<mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
         auto result = txn.exec_params(
@@ -24,13 +24,13 @@ bool UserDatabaseManager::authenticateUser(const string& login, const string& pa
         );
         txn.commit();
         if (result.empty()) {
-            bf_protection.recordFailedAttempt(login); // Запоминаем неудачную попытку
+            bfprotection.recordFailedAttempt(login); // Запоминаем неудачную попытку
             return false; 
         }
-        string stored_hash_with_salt = result[0]["password_hash"].as<string>();
-        bool authenticated = verifyPassword(password, stored_hash_with_salt);
+        string storedhashwithsalt = result[0]["password_hash"].as<string>();
+        bool authenticated = verifyPassword(password, storedhashwithsalt);
         if (authenticated) {
-            bf_protection.recordSuccessfulAttempt(login); 
+            bfprotection.recordSuccessfulAttempt(login); 
             pqxx::work txn2(connection);
             txn2.exec_params(
                 "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE login = $1",
@@ -38,23 +38,23 @@ bool UserDatabaseManager::authenticateUser(const string& login, const string& pa
             );
             txn2.commit();
         } else {
-            bf_protection.recordFailedAttempt(login);
+            bfprotection.recordFailedAttempt(login);
         }
         return authenticated;
     } catch (const std::exception& e) {
         cerr << "Ошибка аутентификации: " << e.what() << endl;
-        bf_protection.recordFailedAttempt(login); 
+        bfprotection.recordFailedAttempt(login); 
         return false;
     }
 }
 bool UserDatabaseManager::registerUser(const string& login, const string& password) {
-    lock_guard<mutex> lock(db_mutex);
+    lock_guard<mutex> lock(dbmutex);
     try {
-        string hash_with_salt = SHAWithSalt(password);
+        string hashwithsalt = SHAWithSalt(password);
         pqxx::work txn(connection);
         txn.exec_params(
             "INSERT INTO users (login, password_hash) VALUES ($1, $2)",
-            login, hash_with_salt
+            login, hashwithsalt
         );
         txn.commit();
         return true;
@@ -64,7 +64,7 @@ bool UserDatabaseManager::registerUser(const string& login, const string& passwo
     }
 }
 bool UserDatabaseManager::userExists(const string& login) {
-    lock_guard<mutex> lock(db_mutex);
+    lock_guard<mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
         auto result = txn.exec_params(
@@ -79,7 +79,7 @@ bool UserDatabaseManager::userExists(const string& login) {
     }
 }
 json UserDatabaseManager::getUserProfile(const string& login) {
-    lock_guard<mutex> lock(db_mutex);
+    lock_guard<mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
         auto result = txn.exec_params(
@@ -104,19 +104,19 @@ json UserDatabaseManager::getUserProfile(const string& login) {
     }
 }
 bool UserDatabaseManager::saveUserProfile(const json& profile) {
-    lock_guard<mutex> lock(db_mutex);
+    lock_guard<mutex> lock(dbmutex);
     try {
         string login = profile["login"].get<string>();
         string nickname = profile["nickname"].get<string>();
         string status = profile["status"].get<string>();
         string birthdate = profile["birthdate"].get<string>();
-        string photo_path = profile["photo_path"].get<string>();
-        pqxx::work txn_check(connection);
-        auto check = txn_check.exec_params(
+        string photopath = profile["photo_path"].get<string>();
+        pqxx::work txncheck(connection);
+        auto check = txncheck.exec_params(
             "SELECT COUNT(*) FROM user_profiles WHERE login = $1",
             login
         );
-        txn_check.commit();
+        txncheck.commit();
         if (check[0][0].as<int>() > 0) {
             pqxx::work txn(connection);
             txn.exec_params(
@@ -125,7 +125,7 @@ bool UserDatabaseManager::saveUserProfile(const json& profile) {
                 nickname,
                 status,
                 birthdate,
-                photo_path,
+                photopath,
                 login
             );
             txn.commit();
@@ -138,7 +138,7 @@ bool UserDatabaseManager::saveUserProfile(const json& profile) {
                 nickname,
                 status,
                 birthdate,
-                photo_path
+                photopath
             );
             txn.commit();
         }
@@ -148,8 +148,8 @@ bool UserDatabaseManager::saveUserProfile(const json& profile) {
         return false;
     }
 }
-bool UserDatabaseManager::verifyPassword(const string& input_password, const string& stored_hash_with_salt) {
-    return ::verifyPassword(input_password, stored_hash_with_salt);
+bool UserDatabaseManager::verifyPassword(const string& inputpassword, const string& storedhashwithsalt) {
+    return ::verifyPassword(inputpassword, storedhashwithsalt);
 }
 string UserDatabaseManager::SHAWithSalt(const string& password) {
     return ::SHAWithSalt(password);
