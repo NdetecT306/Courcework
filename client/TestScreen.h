@@ -17,39 +17,36 @@ struct Question {
     int id;
     string text;
     vector<pair<int, string>> answers;
-    int correct_answer_id;
+    int correctAnswerId;
 };
 struct TestSession {
-    int category_id;
-    string category_name;
+    int categoryId;
+    string categoryName;
     vector<Question> questions;
-    size_t current_question;
+    size_t currentQuestion;
     int score;
-    vector<bool> user_answers;
-    vector<int> selected_answers;
+    vector<bool> userAnswers;
+    vector<int> selectedAnswers;
 };
 class TestScreen : public Gtk::Box {
 protected:
-    void showQuestion(size_t question_index);
-    void onAnswerSelected(int answer_index);
+    void showQuestion(size_t questionIndex);
+    void onAnswerSelected(int answerIndex);
     void onNextQuestion();
     void onFinishTest();
     void resetAnswerStyles();
 private:
-    // UI элементы
     Gtk::Label* questionHeader = nullptr;
     Gtk::Label* questionLabel = nullptr;
     Gtk::Grid* answersGrid = nullptr;
     Gtk::Button* answerButtons[4] = {nullptr, nullptr, nullptr, nullptr};
     Gtk::Label* answerLabels[4] = {nullptr, nullptr, nullptr, nullptr};
-    Gtk::Label* iconLabels[4] = {nullptr, nullptr, nullptr, nullptr}; // ДОБАВЛЕНО
+    Gtk::Label* iconLabels[4] = {nullptr, nullptr, nullptr, nullptr};
     Gtk::Button* nextButton = nullptr;
-    // Данные теста
     unique_ptr<TestSession> currentSession;
     string currentUsername;
     int selectedAnswerIndex = -1;
     bool answerSubmitted = false;
-    // Вспомогательные методы
     bool loadQuestionsFromServer(int category_id);
     void saveTestResult();
     void showErrorMessage(const std::string& message);
