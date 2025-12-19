@@ -14,17 +14,17 @@ private:
     struct CategoryInfo {
         int id;
         string name;
-        int question_count;
-        Gtk::CheckButton* check_button = nullptr;
+        int questionCount;
+        Gtk::CheckButton* checkButton = nullptr;
     };
-    Gtk::Label* title_label = nullptr;
-    Gtk::Box* categories_box = nullptr;
-    Gtk::SpinButton* questions_spin = nullptr;
-    Gtk::Button* create_test_button = nullptr;
-    Gtk::Button* back_button = nullptr;
-    Gtk::Label* status_label = nullptr;
+    Gtk::Label* titleLabel = nullptr;
+    Gtk::Box* categoriesBox = nullptr;
+    Gtk::SpinButton* questionsSpin = nullptr;
+    Gtk::Button* createTestButton = nullptr;
+    Gtk::Button* backButton = nullptr;
+    Gtk::Label* statusLabel = nullptr;
     vector<CategoryInfo> categories;
-    string current_username;
+    string currentUsername;
     void load_css();
     void create_test();
     void on_category_toggled();
