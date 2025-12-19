@@ -10,15 +10,15 @@ using namespace std;
 class QuizDatabaseManager {
 private:
     pqxx::connection connection;
-    mutex db_mutex;
+    mutex dbmutex;
     
 public:
     QuizDatabaseManager();
     json getCategories();
-    json getQuestionsByCategory(int category_id);
-    json checkAnswers(const json& user_answers);
-    json getTestStatistics(const string& user_login);
-    bool saveTestResult(const string& user_login, int category_id, int score, int total_questions, int correct_answers);
+    json getQuestionsByCategory(int categoryid);
+    json checkAnswers(const json& useranswers);
+    json getTestStatistics(const string& userlogin);
+    bool saveTestResult(const string& userlogin, int categoryid, int score, int totalquestions, int correctanswers);
 };
 
 #endif
