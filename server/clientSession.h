@@ -1,31 +1,34 @@
 #ifndef CLIENTSESSION_H
 #define CLIENTSESSION_H
+
 #include <boost/asio.hpp>
-#include <array>
+#include <boost/asio/ssl.hpp>
 #include <memory>
 #include "userDatabase.h"
 #include "quizDatabase.h"
 #include "resourceDatabase.h"
 #include "bruteforceProtection.h"
-using boost::asio::ip::tcp;
+#include <nlohmann/json.hpp>
+#include <iostream>
 using json = nlohmann::json;
-using namespace std;
+using boost::asio::ip::tcp;
 
 class ClientSession : public std::enable_shared_from_this<ClientSession> {
 private:
-    tcp::socket socket;
-    UserDatabaseManager& user_db;
-    QuizDatabaseManager& quiz_db;
-    ResourceDatabaseManager& resource_db;
-    BruteForceProtection& bf_protection;
-    array<char, 8192> buffer;
-public:
-    ClientSession(tcp::socket sock, UserDatabaseManager& user_db_manager, QuizDatabaseManager& quiz_db_manager, ResourceDatabaseManager& resource_db_manager,BruteForceProtection& bf_protector);
-    void start();   
-private:
     void do_read();
-    void process_request(const string& request_str);
+    void process_request(const std::string& requeststr);
     void send_response(const json& response);
+    void handle_handshake(const boost::system::error_code& error);
+    boost::asio::ssl::stream<tcp::socket> socket;
+    UserDatabaseManager& userdb;
+    QuizDatabaseManager& quizdb;
+    ResourceDatabaseManager& resourcedb;
+    BruteForceProtection& bfprotection;
+    enum { max_length = 4096 };
+    char buffer[max_length];
+public:
+    ClientSession(boost::asio::ssl::stream<tcp::socket> socket, UserDatabaseManager& userdbmanager,QuizDatabaseManager& quizdbmanager,
+                  ResourceDatabaseManager& resourcedbmanager,BruteForceProtection& bfprotector);
+    void start();
 };
-
 #endif
