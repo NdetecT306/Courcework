@@ -1,14 +1,14 @@
 #include "resourceDatabase.h"
 #include <iostream>
 ResourceDatabaseManager::ResourceDatabaseManager() : connection(
-    "host=localhost "
+    "host=172.17.0.1 "
     "port=5432 "
     "dbname=resource "
     "user=admin306 "
     "password=ILoveMyCreation"
 ) {}
 json ResourceDatabaseManager::getResourceCategories() {
-    lock_guard<mutex> lock(db_mutex);
+    lock_guard<mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
         auto result = txn.exec("SELECT category_id, category_name FROM resource_categories ORDER BY category_id");
@@ -26,14 +26,14 @@ json ResourceDatabaseManager::getResourceCategories() {
         return {{"error", e.what()}};
     }
 }
-json ResourceDatabaseManager::getResourcesByCategory(int category_id) {
-    lock_guard<mutex> lock(db_mutex);
+json ResourceDatabaseManager::getResourcesByCategory(int categoryid) {
+    lock_guard<mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
         auto result = txn.exec_params(
             "SELECT resource_id, resource_name, author, resource_link "
             "FROM resources WHERE category_id = $1 ORDER BY resource_id",
-            category_id
+            categoryid
         );
         txn.commit();
         json resources = json::array();
@@ -52,7 +52,7 @@ json ResourceDatabaseManager::getResourcesByCategory(int category_id) {
     }
 }
 json ResourceDatabaseManager::getAllResources() {
-    lock_guard<mutex> lock(db_mutex);
+    lock_guard<mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
         auto result = txn.exec(
@@ -80,39 +80,39 @@ json ResourceDatabaseManager::getAllResources() {
     }
 }
 json ResourceDatabaseManager::getResourcesWithCategories() {
-    lock_guard<mutex> lock(db_mutex);
+    lock_guard<mutex> lock(dbmutex);
     try {
         pqxx::work txn(connection);
-        auto categories_result = txn.exec(
+        auto categoriesresult = txn.exec(
             "SELECT category_id, category_name FROM resource_categories ORDER BY category_id"
         );
         json result = json::object();
-        json categories_array = json::array();
-        for (const auto& cat_row : categories_result) {
+        json categoriesarray = json::array();
+        for (const auto& catrow : categoriesresult) {
             json category;
-            int cat_id = cat_row["category_id"].as<int>();
-            string cat_name = cat_row["category_name"].as<string>();
-            category["id"] = cat_id;
-            category["name"] = cat_name;
-            auto resources_result = txn.exec_params(
+            int catid = catrow["category_id"].as<int>();
+            string catname = catrow["category_name"].as<string>();
+            category["id"] = catid;
+            category["name"] = catname;
+            auto resourcesresult = txn.exec_params(
                 "SELECT resource_id, resource_name, author, resource_link "
                 "FROM resources WHERE category_id = $1 ORDER BY resource_name",
-                cat_id
+                catid
             );
             json resources = json::array();
-            for (const auto& res_row : resources_result) {
+            for (const auto& resrow : resourcesresult) {
                 json resource;
-                resource["id"] = res_row["resource_id"].as<int>();
-                resource["name"] = res_row["resource_name"].as<string>();
-                resource["author"] = res_row["author"].is_null() ? "" : res_row["author"].as<string>();
-                resource["link"] = res_row["resource_link"].as<string>();
+                resource["id"] = resrow["resource_id"].as<int>();
+                resource["name"] = resrow["resource_name"].as<string>();
+                resource["author"] = resrow["author"].is_null() ? "" : resrow["author"].as<string>();
+                resource["link"] = resrow["resource_link"].as<string>();
                 resources.push_back(resource);
             }
             category["resources"] = resources;
-            categories_array.push_back(category);
+            categoriesarray.push_back(category);
         }
         txn.commit();
-        result["categories"] = categories_array;
+        result["categories"] = categoriesarray;
         return result;
     } catch (const exception& e) {
         cerr << "Выдача ресурсов пользователю пошла под откос: " << e.what() << endl;
