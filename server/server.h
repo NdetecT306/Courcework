@@ -2,27 +2,33 @@
 #define SERVER_H
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+#include <memory>
+#include <iostream>
 #include "userDatabase.h"
 #include "quizDatabase.h"
 #include "resourceDatabase.h"
 #include "bruteforceProtection.h"
-#include "clientSession.h"
 using boost::asio::ip::tcp;
 using namespace std;
 
+class ClientSession;
 class Server {
 private:
-    boost::asio::io_context io_context;
-    tcp::acceptor acceptor;
-    UserDatabaseManager user_db_manager;
-    QuizDatabaseManager quiz_db_manager;
-    ResourceDatabaseManager resource_db_manager;
-    BruteForceProtection bf_protection;
-public:
-    Server(short port);
-    void run();
-private:
     void do_accept();
+    void load_certificates();
+    boost::asio::io_context iocontext;
+    boost::asio::ssl::context ssl_context;
+    tcp::acceptor acceptor;
+    UserDatabaseManager userdbmanager;
+    QuizDatabaseManager quizdbmanager;
+    ResourceDatabaseManager resourcedbmanager;
+    BruteForceProtection bfprotection;
+    string cert_file;
+    string key_file;
+public:
+    Server(short port, const string& cert_file, const string& key_file);
+    void run();
 };
 
 #endif
