@@ -1,169 +1,236 @@
 #include "LoginFormScreen.h"
 #include "NetworkClient.h"
+#include <chrono>
+#include <thread>
 
-LoginFormScreen::LoginFormScreen() : Gtk::Box(Gtk::Orientation::VERTICAL, 5) { //Создание
+extern NetworkClient* g_network_client;
+
+LoginFormScreen::LoginFormScreen() : Gtk::Box(Gtk::Orientation::VERTICAL, 5) {
     set_margin(15);
-    // Заголовок
-    title_label = Gtk::make_managed<Gtk::Label>("Вход в систему");
-    title_label->set_halign(Gtk::Align::CENTER);
-    title_label->add_css_class("form-title");
-    append(*title_label);
+    
+    titleLabel = Gtk::make_managed<Gtk::Label>("Вход в систему");
+    titleLabel->set_halign(Gtk::Align::CENTER);
+    titleLabel->add_css_class("form-title");
+    append(*titleLabel);
+    
     // Форма входа
-    form_box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL, 8);
-    form_box->add_css_class("form-box");
-    form_box->set_margin(10);
-    form_box->set_halign(Gtk::Align::CENTER);
-    form_box->set_valign(Gtk::Align::CENTER);
-    append(*form_box);
-    // Поле логина
+    formBox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL, 8);
+    formBox->add_css_class("form-box");
+    formBox->set_margin(10);
+    formBox->set_halign(Gtk::Align::CENTER);
+    formBox->set_valign(Gtk::Align::CENTER);
+    append(*formBox);
+    
+    // Логин
     auto loginbox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL, 5);
     loginbox->set_halign(Gtk::Align::FILL);
-    form_box->append(*loginbox);
+    formBox->append(*loginbox);
+    
     auto loginlabel = Gtk::make_managed<Gtk::Label>("Логин:");
     loginlabel->set_size_request(100, -1);
     loginbox->append(*loginlabel);
-    login_entry = Gtk::make_managed<Gtk::Entry>();
-    login_entry->set_hexpand(true);
-    login_entry->set_margin_bottom(5);
-    loginbox->append(*login_entry);
+    
+    loginEntry = Gtk::make_managed<Gtk::Entry>();
+    loginEntry->set_hexpand(true);
+    loginEntry->set_margin_bottom(5);
+    loginbox->append(*loginEntry);
+    
     // Поле пароля
     auto passwordbox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL, 5);
     passwordbox->set_halign(Gtk::Align::FILL);
-    form_box->append(*passwordbox);
+    formBox->append(*passwordbox);
+    
     auto passwordlabel = Gtk::make_managed<Gtk::Label>("Пароль:");
     passwordlabel->set_size_request(100, -1);
     passwordbox->append(*passwordlabel);
-    password_entry = Gtk::make_managed<Gtk::Entry>();
-    password_entry->set_hexpand(true);
-    password_entry->set_visibility(false);
-    password_entry->set_input_purpose(Gtk::InputPurpose::PASSWORD);
-    passwordbox->append(*password_entry);
+    
+    passwordEntry = Gtk::make_managed<Gtk::Entry>();
+    passwordEntry->set_hexpand(true);
+    passwordEntry->set_visibility(false);
+    passwordEntry->set_input_purpose(Gtk::InputPurpose::PASSWORD);
+    passwordbox->append(*passwordEntry);
+    
     // Таймер блокировки
-    timer_label = Gtk::make_managed<Gtk::Label>("");
-    timer_label->set_halign(Gtk::Align::CENTER);
-    timer_label->set_visible(false);
-    timer_label->add_css_class("timer-label");
-    form_box->append(*timer_label);
+    timerLabel = Gtk::make_managed<Gtk::Label>("");
+    timerLabel->set_halign(Gtk::Align::CENTER);
+    timerLabel->set_visible(false);
+    timerLabel->add_css_class("timer-label");
+    formBox->append(*timerLabel);
+    
     // Сообщение об ошибке
-    message_label = Gtk::make_managed<Gtk::Label>("");
-    message_label->set_halign(Gtk::Align::CENTER);
-    message_label->set_visible(false);
-    form_box->append(*message_label);
+    messageLabel = Gtk::make_managed<Gtk::Label>("");
+    messageLabel->set_halign(Gtk::Align::CENTER);
+    messageLabel->set_visible(false);
+    formBox->append(*messageLabel);
+    
     // Кнопки
     auto buttonsbox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL, 10);
     buttonsbox->set_halign(Gtk::Align::CENTER);
     buttonsbox->set_margin_top(15);
-    form_box->append(*buttonsbox);
-    login_button = Gtk::make_managed<Gtk::Button>("Войти");
-    login_button->add_css_class("form-button");
-    login_button->set_size_request(150, 25);
-    login_button->signal_clicked().connect(sigc::mem_fun(*this, &LoginFormScreen::on_login_button_clicked));
-    buttonsbox->append(*login_button);
-    back_button = Gtk::make_managed<Gtk::Button>("Назад");
-    back_button->add_css_class("back-button");
-    back_button->set_size_request(150, 25);
-    back_button->signal_clicked().connect(sigc::mem_fun(*this, &LoginFormScreen::on_back_clicked));
-    buttonsbox->append(*back_button);
+    formBox->append(*buttonsbox);
+    
+    loginButton = Gtk::make_managed<Gtk::Button>("Войти");
+    loginButton->add_css_class("form-button");
+    loginButton->set_size_request(150, 25);
+    loginButton->signal_clicked().connect(sigc::mem_fun(*this, &LoginFormScreen::on_login_button_clicked));
+    buttonsbox->append(*loginButton);
+    
+    backButton = Gtk::make_managed<Gtk::Button>("Назад");
+    backButton->add_css_class("back-button");
+    backButton->set_size_request(150, 25);
+    backButton->signal_clicked().connect(sigc::mem_fun(*this, &LoginFormScreen::on_back_clicked));
+    buttonsbox->append(*backButton);
+    
     load_css();
 }
-void LoginFormScreen::show_success_message(const string& message) { //Показть сообщение
+
+void LoginFormScreen::reset_login_button() {
+    if (loginButton) {
+        loginButton->set_sensitive(true);
+        loginButton->set_label("Войти");
+    }
+}
+
+void LoginFormScreen::reset_form() {
+    if (loginEntry) loginEntry->set_sensitive(true);
+    if (passwordEntry) passwordEntry->set_sensitive(true);
+    reset_login_button();
+    if (messageLabel) messageLabel->set_visible(false);
+    if (timerLabel) {
+        timerLabel->set_visible(false);
+        timerLabel->remove_css_class("error-label");
+        timerLabel->remove_css_class("warning-label");
+    }
+}
+
+void LoginFormScreen::show_success_message(const string& message) {
     show_message(message, "success");
 }
-void LoginFormScreen::on_login_button_clicked() { //Попытка войти
-    string login = login_entry->get_text();
-    string password = password_entry->get_text();
+
+void LoginFormScreen::on_login_button_clicked() {
+    string login = loginEntry->get_text();
+    string password = passwordEntry->get_text();
+    
     if (login.empty() || password.empty()) {
         show_message("Логин и пароль не могут быть пустыми!", "error");
         return;
     }
+    
     if (!g_network_client || !g_network_client->is_connected()) {
         show_message("Нет подключения к серверу!", "error");
         return;
     }
-    login_button->set_sensitive(false);
-    login_button->set_label("Проверка...");
+    
+    loginButton->set_sensitive(false);
+    loginButton->set_label("Проверка...");
+    
     // Отправляем запрос на сервер
     json response = g_network_client->login(login, password);
-    // Проверяем, заблоирован ли пользователь
+    
+    // Проверяем, заблокирован ли пользователь
     if (response.contains("blocked") && response["blocked"] == true) {
         int remaining_time = response["remaining_time"];
         show_blocked_message(remaining_time);
-        login_button->set_sensitive(true);
-        login_button->set_label("Войти");
         return;
     }
+    
     if (response["status"] == "success") {
         show_message("Успешный вход!", "success");
-        Glib::signal_timeout().connect_once([this, login]() {signal_login_success.emit(login);}, 1000);
+        reset_login_button();
+        Glib::signal_timeout().connect_once([this, login]() {
+            signal_login_success.emit(login);
+        }, 1000);
     } else {
         show_message("" + string(response["message"]), "error");
-        login_button->set_sensitive(true);
-        login_button->set_label("Войти");
+        reset_login_button();
     }
 }
-void LoginFormScreen::show_blocked_message(int seconds) { //Блокировка 
-    timer_label->set_visible(true);
-    timer_label->set_text("Подождите " + to_string(seconds) + " секунд...");
-    timer_label->add_css_class("error-label");
+
+void LoginFormScreen::show_blocked_message(int seconds) {
+    timerLabel->set_visible(true);
+    timerLabel->set_text("Подождите " + to_string(seconds) + " секунд...");
+    timerLabel->add_css_class("error-label");
+    
     // Блокируем форму
-    login_entry->set_sensitive(false);
-    password_entry->set_sensitive(false);
-    login_button->set_sensitive(false);
-    // Запускаем обратный отсчет
+    loginEntry->set_sensitive(false);
+    passwordEntry->set_sensitive(false);
+    loginButton->set_sensitive(false);
+    
+    // Запускаем обратный отсчет в отдельном потоке
     auto countdown = [this, seconds]() {
         for (int i = seconds; i > 0; --i) {
             Glib::signal_idle().connect_once([this, i]() {
-                timer_label->set_text("Подождите " + to_string(i) + " секунд...");
-                if (i <= 3) {
-                    timer_label->add_css_class("warning-label");
+                if (timerLabel) {
+                    timerLabel->set_text("Подождите " + to_string(i) + " секунд...");
+                    if (i <= 3) {
+                        timerLabel->add_css_class("warning-label");
+                    }
                 }
             });
-            this_thread::sleep_for(chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
-        // По окончании таймера разблокируем форму
+        
         Glib::signal_idle().connect_once([this]() {
-            timer_label->set_visible(false);
-            timer_label->remove_css_class("error-label");
-            timer_label->remove_css_class("warning-label");
-            login_entry->set_sensitive(true);
-            password_entry->set_sensitive(true);
-            login_button->set_sensitive(true);
-            login_button->set_label("Войти");
-            show_message("Можно попробовать снова", "info");
+            if (timerLabel) {
+                timerLabel->set_visible(false);
+                timerLabel->remove_css_class("error-label");
+                timerLabel->remove_css_class("warning-label");
+            }
+            if (loginEntry) loginEntry->set_sensitive(true);
+            if (passwordEntry) passwordEntry->set_sensitive(true);
+            reset_login_button();
+            if (messageLabel) {
+                messageLabel->set_text("Можно попробовать снова");
+                messageLabel->add_css_class("info-label");
+                messageLabel->set_visible(true);
+                Glib::signal_timeout().connect_once([this]() {
+                    if (messageLabel) messageLabel->set_visible(false);
+                }, 3000);
+            }
         });
     };
-    // Запускаем таймер в отдельном потоке
-    thread(countdown).detach();
+    
+    std::thread(countdown).detach();
 }
-void LoginFormScreen::on_back_clicked() { //Назад
-    login_entry->set_text("");
-    password_entry->set_text("");
-    message_label->set_visible(false);
-    timer_label->set_visible(false);
+
+void LoginFormScreen::on_back_clicked() {
+    if (loginEntry) loginEntry->set_text("");
+    if (passwordEntry) passwordEntry->set_text("");
+    if (messageLabel) messageLabel->set_visible(false);
+    if (timerLabel) timerLabel->set_visible(false);
+    reset_login_button();
     signal_back_to_menu.emit();
 }
-void LoginFormScreen::show_message(const string& text, const string& type) { //Сообщение
-    message_label->set_text(text);
-    message_label->set_visible(true);
+
+void LoginFormScreen::show_message(const string& text, const string& type) {
+    if (!messageLabel) return;
+    
+    messageLabel->set_text(text);
+    messageLabel->set_visible(true);
+    
     if (type == "success") {
-        message_label->add_css_class("success-label");
-        message_label->remove_css_class("error-label");
-        message_label->remove_css_class("info-label");
+        messageLabel->add_css_class("success-label");
+        messageLabel->remove_css_class("error-label");
+        messageLabel->remove_css_class("info-label");
     } else if (type == "error") {
-        message_label->add_css_class("error-label");
-        message_label->remove_css_class("success-label");
-        message_label->remove_css_class("info-label");
+        messageLabel->add_css_class("error-label");
+        messageLabel->remove_css_class("success-label");
+        messageLabel->remove_css_class("info-label");
     } else if (type == "info") {
-        message_label->add_css_class("info-label");
-        message_label->remove_css_class("success-label");
-        message_label->remove_css_class("error-label");
+        messageLabel->add_css_class("info-label");
+        messageLabel->remove_css_class("success-label");
+        messageLabel->remove_css_class("error-label");
     }
+    
     // Скрываем сообщение через 3 секунды
     Glib::signal_timeout().connect_once([this]() {
-        message_label->set_visible(false);
+        if (messageLabel) {
+            messageLabel->set_visible(false);
+        }
     }, 3000);
 }
-void LoginFormScreen::load_css() { //Стили
+
+void LoginFormScreen::load_css() {
     auto css_provider = Gtk::CssProvider::create();
     const char* css_style = R"(
         .form-title {
@@ -287,6 +354,7 @@ void LoginFormScreen::load_css() { //Стили
             min-height: 25px;
         }
     )";
+    
     css_provider->load_from_data(css_style);
     Gtk::StyleContext::add_provider_for_display(
         Gdk::Display::get_default(),
