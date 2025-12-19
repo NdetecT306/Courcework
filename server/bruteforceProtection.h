@@ -9,13 +9,13 @@ using namespace std::chrono;
 
 struct LoginAttempt {
     int attempts;
-    system_clock::time_point last_attempt;
-    system_clock::time_point block_until;
+    system_clock::time_point lastattempt;
+    system_clock::time_point blockuntil;
 };
 class BruteForceProtection {
 private:
-    mutex lock_mutex;
-    map<string, LoginAttempt> login_attempts;
+    mutex lockmutex;
+    map<string, LoginAttempt> loginattempts;
 public:
     bool canAttemptLogin(const string& login);
     void recordFailedAttempt(const string& login);
