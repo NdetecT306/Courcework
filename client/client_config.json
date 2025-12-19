@@ -2,11 +2,19 @@
     "server": {
         "host": "localhost",
         "port": 8080,
-        "reconnect_interval_seconds": 5
+        "ssl_enabled": true,
+        "certificate_file": "server.crt",
+        "verify_certificate": true,
+        "reconnect_interval_seconds": 5,
+        "require_client_certificate": false  
     },
     "ui": {
         "window_width": 2400,
         "window_height": 300,
         "theme": "light"
+    },
+    "security": {
+        "encryption_enabled": true,
+        "show_encryption_status": true
     }
 }
