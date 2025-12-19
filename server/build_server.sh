@@ -1,4 +1,4 @@
-echo "Компиляция сервера"
+echo "Компиляция сервера..."
 mkdir -p build_server
 cd build_server
 cmake .. -DCMAKE_BUILD_TYPE=Release \
