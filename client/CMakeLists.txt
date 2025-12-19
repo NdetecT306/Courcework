@@ -68,13 +68,12 @@ target_compile_options(auth_client PRIVATE
     -pthread
 )
 
-# КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: правильная линковка SSL
 target_link_libraries(auth_client
     ${GTKMM_LIBRARIES}
     ${GLIBMM_LIBRARIES}
     ${CAIROMM_LIBRARIES}
     ${Boost_LIBRARIES}
-    ${OPENSSL_LIBRARIES}  # Это добавит -lssl -lcrypto
+    ${OPENSSL_LIBRARIES}  
     nlohmann_json::nlohmann_json
     pthread
 )
